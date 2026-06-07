@@ -4,8 +4,7 @@
 .env.local
 
 # ── Dataset (terlalu besar untuk git) ───────────────────────
-data/raw/*.jsonl
-data/raw/*.csv
+data/raw/
 data/processed/
 # Pengecualian: sample kecil boleh masuk git
 !data/samples/

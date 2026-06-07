@@ -36,11 +36,11 @@ from dotenv import load_dotenv
 load_dotenv(REPO_ROOT / ".env")
 
 API_KEY      = os.getenv("API_KEY_GEMINI")
-MODEL_NAME   = "gemini-2.5-flash"   # free tier: 15 RPM, 1.500 req/hari
+MODEL_NAME   = "gemini-2.5-flash-lite"   # free tier: 15 RPM, 1.500 req/hari
 SOURCE_MODEL = "Gemini-1.5-Flash"
 OUTPUT_FILE  = PATHS["raw_gemini"]  # → data/raw/ai_generated_gemini.jsonl (Drive)
 TARGET       = 500
-DELAY        = 13                  # detik antar request (batas free tier: 15 RPM)
+DELAY        = 2.5                  # detik antar request (batas free tier: 15 RPM)
 
 ensure_dirs()
 genai.configure(api_key=API_KEY)
@@ -100,9 +100,9 @@ STYLES = [
 ]
 
 LENGTHS = [
-    ("pendek",  "sekitar 50–70 kata"),
-    ("sedang",  "sekitar 75–100 kata"),
-    ("panjang", "sekitar 100–130 kata"),
+    ("pendek",  "20–30 kata"),
+    ("sedang",  "35–45 kata"),
+    ("panjang", "45–55 kata"),
 ]
 
 # ── CELL 5: Helper Functions ─────────────────────────────────
@@ -113,6 +113,7 @@ def build_prompt(subtopic, style_instr, length_instr):
         f"- Panjang teks: {length_instr}\n"
         f"- {style_instr}\n"
         "- Jangan gunakan bullet points, daftar bernomor, atau heading\n"
+        "- Tulis MAKSIMAL 55 kata, tidak lebih\n"
         "- Jangan tambahkan kalimat pembuka seperti \"Tentu,\" atau \"Berikut adalah\"\n"
         "- Langsung tulis paragrafnya saja"
     )
