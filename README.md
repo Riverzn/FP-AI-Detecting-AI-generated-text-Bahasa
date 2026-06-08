@@ -6,17 +6,6 @@ Sistem deteksi teks berbahasa Indonesia yang ditulis AI vs manusia, menggunakan 
 
 ---
 
-## Anggota Kelompok
-
-| Nama | NIM | Tugas Utama |
-|------|-----|-------------|
-| [Nama A] | [NIM] | Data collection (Groq/Llama) · SVM baseline |
-| [Nama B] | [NIM] | Data collection (GPT-OSS) · BiLSTM |
-| [Nama C] | [NIM] | EDA · IndoBERT fine-tuning |
-| [Nama D] | [NIM] | Evaluation · Report |
-
----
-
 ## Progress
 
 | Milestone | Status |
