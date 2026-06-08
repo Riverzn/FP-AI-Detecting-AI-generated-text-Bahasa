@@ -35,6 +35,7 @@ PATHS = {
     "raw_openai"     : DRIVE_ROOT / "data" / "raw" / "ai_generated_openai.jsonl",
     "raw_llama"      : DRIVE_ROOT / "data" / "raw" / "ai_generated_llama.jsonl",
     "raw_self_human" : DRIVE_ROOT / "data" / "raw" / "self_human.csv",
+    "raw_self_human_json": DRIVE_ROOT / "data" / "raw" / "self_human.json",
 
     # Processed splits
     "train"          : DRIVE_ROOT / "data" / "processed" / "train.csv",

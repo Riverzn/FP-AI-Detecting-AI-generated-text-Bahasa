@@ -7,13 +7,13 @@
   "f1_ai": 1.0,
   "precision_macro": 1.0,
   "recall_macro": 1.0,
-  "val_accuracy": 0.9965,
-  "train_time_seconds": 0.2134,
-  "inference_time_ms_per_sample": 0.1369,
+  "val_accuracy": 1.0,
+  "train_time_seconds": 0.5026,
+  "inference_time_ms_per_sample": 0.2427,
   "n_train": 1337,
   "n_val": 287,
   "n_test": 287,
-  "tfidf_vocab_size": 14214,
+  "tfidf_vocab_size": 28514,
   "classification_report": {
     "Human": {
       "precision": 1.0,

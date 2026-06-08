@@ -1,17 +1,26 @@
 {
-  "total": 1911,
-  "train": 1337,
-  "val": 287,
-  "test": 287,
+  "total": 1957,
+  "train": 1369,
+  "val": 294,
+  "test": 294,
   "label_dist": {
     "AI": 997,
-    "human": 914
+    "human": 960
   },
   "source_dist": {
-    "IndoNLI": 914,
     "Llama-3.1-8B": 789,
-    "GPT-OSS-20B": 208
+    "IndoNLI": 660,
+    "GPT-OSS-20B": 208,
+    "scraped_detik": 100,
+    "scraped_cnn_indonesia": 100,
+    "scraped_antara": 100
   },
-  "avg_word_count": 56.3,
-  "class_ratio": 1.09
+  "avg_word_count": 55.5,
+  "class_ratio": 1.04,
+  "composition": {
+    "indonli_human": 700,
+    "scraped_human": 300,
+    "llama_ai": 789,
+    "gptoss_ai": 208
+  }
 }
