@@ -1,0 +1,17 @@
+{
+  "total": 1911,
+  "train": 1337,
+  "val": 287,
+  "test": 287,
+  "label_dist": {
+    "AI": 997,
+    "human": 914
+  },
+  "source_dist": {
+    "IndoNLI": 914,
+    "Llama-3.1-8B": 789,
+    "GPT-OSS-20B": 208
+  },
+  "avg_word_count": 56.3,
+  "class_ratio": 1.09
+}
