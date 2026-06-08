@@ -1,0 +1,44 @@
+{
+  "model": "SVM + TF-IDF (LinearSVC)",
+  "accuracy": 1.0,
+  "roc_auc": 1.0,
+  "f1_macro": 1.0,
+  "f1_human": 1.0,
+  "f1_ai": 1.0,
+  "precision_macro": 1.0,
+  "recall_macro": 1.0,
+  "val_accuracy": 0.9965,
+  "train_time_seconds": 0.2134,
+  "inference_time_ms_per_sample": 0.1369,
+  "n_train": 1337,
+  "n_val": 287,
+  "n_test": 287,
+  "tfidf_vocab_size": 14214,
+  "classification_report": {
+    "Human": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 138.0
+    },
+    "AI": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 149.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 287.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 287.0
+    }
+  }
+}

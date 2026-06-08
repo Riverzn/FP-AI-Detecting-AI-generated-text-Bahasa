@@ -25,7 +25,7 @@ client = Groq(api_key=GROQ_API_KEY)
 # ============================================================
 MODEL_NAME = "llama-3.1-8b-instant"
 SOURCE_MODEL = "Llama-3.1-8B"
-OUTPUT_FILE = PATHS["raw_gemini"]  # Tetap nimbrung di file master yang sama
+OUTPUT_FILE = PATHS["raw_llama"]  
 TARGET = 1000                      # Target akhir genap 1000 data
 
 ensure_dirs()

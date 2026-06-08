@@ -32,8 +32,8 @@ PATHS = {
     "processed_dir"  : DRIVE_ROOT / "data" / "processed",
 
     # File mentah per sumber
-    "raw_gemini"     : DRIVE_ROOT / "data" / "raw" / "ai_generated_gemini.jsonl",
     "raw_openai"     : DRIVE_ROOT / "data" / "raw" / "ai_generated_openai.jsonl",
+    "raw_llama"      : DRIVE_ROOT / "data" / "raw" / "ai_generated_llama.jsonl",
     "raw_self_human" : DRIVE_ROOT / "data" / "raw" / "self_human.csv",
 
     # Processed splits
