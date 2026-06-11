@@ -1,28 +1,29 @@
 
 import sys, os, re
-from pathlib import Path
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from collections import Counter
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from pathlib import Path 
+import pandas as pd #csv
+import numpy as np #sklearn
+from sklearn.model_selection import train_test_split 
+from sklearn.metrics import classification_report #evaluasi
+from collections import Counter #vocab counting
+import torch #deep learning
+import torch.nn as nn #lstm
+from torch.utils.data import Dataset, DataLoader #dataset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-# Konfigurasi
-HUMAN_DATA_PATH = REPO_ROOT / "data" / "samples" / "indonli_sample.csv"
-AI_LLAMA_PATH   = REPO_ROOT / "data" / "raw" / "ai_generated_llama.jsonl"
-AI_GPTOSS_PATH  = REPO_ROOT / "data" / "raw" / "ai_generated_gpt_oss.jsonl"
+# hyperparameter 
+PROCESSED_DIR  = REPO_ROOT / "data" / "processed" 
+TRAIN_PATH     = PROCESSED_DIR / "train_clean.csv"   
+VAL_PATH       = PROCESSED_DIR / "val_clean.csv"
+TEST_PATH      = PROCESSED_DIR / "test_clean.csv"
 
 MAX_VOCAB   = 10000   # dari 20000 — paksa model fokus ke kata umum
 MAX_LEN     = 100     # dari 128 — hindari model baca "signature" panjang
-EMBED_DIM   = 64      # dari 128
-HIDDEN_DIM  = 128     # dari 256
-DROPOUT     = 0.6     # dari 0.5
+EMBED_DIM   = 64      # dari 128 — model lebih kecil, lebih cepat
+HIDDEN_DIM  = 128     # dari 256 -- cukup untuk pola sederhana
+DROPOUT     = 0.6     
 BATCH_SIZE  = 64      
 EPOCHS      = 20
 LR          = 5e-4
@@ -31,7 +32,7 @@ DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
 # Augmentasi teks sederhana
 import random
 
-def augment_text(text, p=0.15):
+def augment_text(text, p=0.15): #teks secara acak dihapus 15% 
     """Random word dropout — paksa model tidak bergantung kata spesifik."""
     words = text.split()
     if len(words) < 5:
@@ -40,17 +41,17 @@ def augment_text(text, p=0.15):
     return " ".join(words) if words else text
 
 # Tokenizer
-def tokenize(text):
+def tokenize(text): 
     text = str(text).lower()
     text = re.sub(r"[^a-z0-9\s]", " ", text)
-    return text.split()
+    return text.split() #text split gimana sih
 
 class Vocabulary:
     def __init__(self, max_size=MAX_VOCAB):
         self.max_size = max_size
-        self.word2idx = {"<PAD>": 0, "<UNK>": 1}
+        self.word2idx = {"<PAD>": 0, "<UNK>": 1} # memetakan kata ke angka
 
-    def build(self, texts):
+    def build(self, texts):  #Bangun vocab dari kumpulan teks, simpan hanya kata yang paling umum
         counter = Counter()
         for text in texts:
             counter.update(tokenize(text))
@@ -60,7 +61,7 @@ class Vocabulary:
                 break
             self.word2idx[word] = len(self.word2idx)
 
-    def encode(self, text, max_len=MAX_LEN):
+    def encode(self, text, max_len=MAX_LEN): #encoding dengan truncation dan padding
         tokens = tokenize(text)[:max_len]
         ids    = [self.word2idx.get(t, 1) for t in tokens]
         ids   += [0] * (max_len - len(ids))
@@ -70,7 +71,7 @@ class Vocabulary:
         return len(self.word2idx)
 
 # Dataset
-class TextDataset(Dataset):
+class TextDataset(Dataset): #Dataset PyTorch untuk teks, dengan opsi augmentasi
     def __init__(self, texts, labels, vocab, augment=False):
         self.vocab   = vocab
         self.augment = augment
@@ -90,7 +91,7 @@ class TextDataset(Dataset):
 class BiLSTMClassifier(nn.Module):
     def __init__(self, vocab_size, embed_dim, hidden_dim, dropout):
         super().__init__()
-        self.embedding  = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.embedding  = nn.Embedding(vocab_size, embed_dim, padding_idx=0) 
         self.embed_drop = nn.Dropout(dropout)
 
         self.bilstm = nn.LSTM(
@@ -102,45 +103,50 @@ class BiLSTMClassifier(nn.Module):
         # Mean pooling + max pooling → concat, lebih robust dari ambil hidden terakhir
         self.dropout = nn.Dropout(dropout)
         self.fc1     = nn.Linear(hidden_dim * 4, hidden_dim)  # *4 karena bi + mean+max
-        self.fc2     = nn.Linear(hidden_dim, 2)
-        self.relu    = nn.ReLU()
+        self.fc2     = nn.Linear(hidden_dim, 2) #layer output untuk klasifikasi 2 kelas
+        self.relu    = nn.ReLU() 
 
     def forward(self, x):
         emb = self.embed_drop(self.embedding(x))          # (B, L, E)
         out, _ = self.bilstm(emb)                         # (B, L, H*2)
 
-        # Gabung mean pooling dan max pooling — lebih informatif dari hidden[-1]
-        mask     = (x != 0).unsqueeze(-1).float()
+        # Gabung mean pooling dan max pooling 
+        mask     = (x != 0).unsqueeze(-1).float()   
         mean_out = (out * mask).sum(1) / mask.sum(1).clamp(min=1)
         max_out  = out.masked_fill(mask == 0, -1e9).max(1).values
 
         pooled = torch.cat([mean_out, max_out], dim=1)   # (B, H*4)
         out    = self.relu(self.fc1(self.dropout(pooled)))
         return self.fc2(self.dropout(out))
-
+ 
 # Load data
 def load_data():
-    df_human = pd.read_csv(HUMAN_DATA_PATH)
-    if "text" not in df_human.columns:
-        for col in ["premise", "sentence1"]:
-            if col in df_human.columns:
-                df_human = df_human.rename(columns={col: "text"})
-                break
-    df_human = df_human[["text"]].dropna().copy()
-    df_human["label"] = 0
+    train_df = pd.read_csv(TRAIN_PATH)
+    val_df   = pd.read_csv(VAL_PATH)
+    test_df  = pd.read_csv(TEST_PATH)
 
-    df_ai = pd.concat([
-        pd.read_json(AI_LLAMA_PATH,  lines=True)[["text"]],
-        pd.read_json(AI_GPTOSS_PATH, lines=True)[["text"]]
-    ], ignore_index=True).dropna()
-    df_ai["label"] = 1
+    # Pastikan kolom konsisten
+    for df in [train_df, val_df, test_df]:
+        assert "text"  in df.columns, f"Kolom 'text' tidak ditemukan: {df.columns.tolist()}"
+        assert "label" in df.columns, f"Kolom 'label' tidak ditemukan: {df.columns.tolist()}"
 
-    n  = min(len(df_human), len(df_ai))
-    df = pd.concat([
-        df_human.sample(n, random_state=42),
-        df_ai.sample(n, random_state=42)
-    ], ignore_index=True).sample(frac=1, random_state=42).reset_index(drop=True)
-    return df
+    train_df = train_df[["text", "label"]].dropna()
+    val_df   = val_df[["text",   "label"]].dropna()
+    test_df  = test_df[["text",  "label"]].dropna()
+
+    label_map = {"human": 0, "AI": 1} #labeling ulang ke angka untuk klasifikasi
+    for df in [train_df, val_df, test_df]:
+        df["label"] = df["label"].map(label_map)
+        # Cek kalau ada label aneh yang tidak terpetakan
+        if df["label"].isna().any():
+            unique = df["label"].unique().tolist()
+            raise ValueError(f"Label tidak dikenal: {unique}. Sesuaikan label_map.")
+
+    print(f"📊 Train : {len(train_df)} sampel {train_df.label.value_counts().to_dict()}")
+    print(f"📊 Val   : {len(val_df)}   sampel {val_df.label.value_counts().to_dict()}")
+    print(f"📊 Test  : {len(test_df)}  sampel {test_df.label.value_counts().to_dict()}")
+
+    return train_df, val_df, test_df
 
 # Training
 def train_epoch(model, loader, optimizer, criterion):
@@ -177,30 +183,27 @@ def eval_epoch(model, loader, criterion):
 # Main
 def main():
     print(f"🚀 BiLSTM | device: {DEVICE}")
-    df = load_data()
-    print(f"📊 Dataset: {len(df)} sampel ({df.label.value_counts().to_dict()})")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        df["text"].tolist(), df["label"].tolist(),
-        test_size=0.2, random_state=42, stratify=df["label"]
-    )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=0.1, random_state=42, stratify=y_train
-    )
+    train_df, val_df, test_df = load_data()
+
+    X_train, y_train = train_df["text"].tolist(), train_df["label"].tolist()
+    X_val,   y_val   = val_df["text"].tolist(),   val_df["label"].tolist()
+    X_test,  y_test  = test_df["text"].tolist(),  test_df["label"].tolist()
 
     vocab = Vocabulary()
     vocab.build(X_train)
     print(f"📖 Vocab size: {len(vocab)}")
 
     train_loader = DataLoader(
-        TextDataset(X_train, y_train, vocab, augment=True),   # augmentasi hanya train
+        TextDataset(X_train, y_train, vocab, augment=True),
         batch_size=BATCH_SIZE, shuffle=True
     )
     val_loader  = DataLoader(TextDataset(X_val,  y_val,  vocab), batch_size=BATCH_SIZE)
     test_loader = DataLoader(TextDataset(X_test, y_test, vocab), batch_size=BATCH_SIZE)
 
+
     model     = BiLSTMClassifier(len(vocab), EMBED_DIM, HIDDEN_DIM, DROPOUT).to(DEVICE)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-3)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=5e-3) #awalnya 1e-3
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, patience=3, factor=0.5, min_lr=1e-5
     )
