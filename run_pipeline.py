@@ -9,7 +9,7 @@
 #
 # Urutan:
 #   [1] Cek raw AI data (collect_gemini / collect_openai)
-#   [2] fetch_human.py  → data/raw/indonli_human.jsonl
+#   [2] fetch_human.py  → data/raw/indonli_human.jsonl & human_scraped_300.json
 #   [3] prepare_dataset.py → data/processed/train|val|test_clean.csv
 #   [4] Verifikasi akhir → tampilkan stats siap IndoBERT
 # ============================================================
@@ -50,6 +50,18 @@ def count_jsonl(filepath):
                 count += 1
     return count
 
+def count_json(filepath):
+    """Hitung jumlah item (array) di file JSON standar."""
+    p = Path(filepath)
+    if not p.exists():
+        return 0
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+            return len(data) if isinstance(data, list) else 0
+    except json.JSONDecodeError:
+        return 0
+
 def file_size_mb(filepath):
     p = Path(filepath)
     return p.stat().st_size / 1e6 if p.exists() else 0
@@ -63,8 +75,6 @@ print("=" * 58)
 # ── [1] Cek raw AI data ───────────────────────────────────────
 print("\n[1/4] Status raw AI-generated data:")
 
-# collect_gpt_oss.py (Llama via Groq) → ai_generated_llama.jsonl
-# collect_openai.py  (GPT-4o-mini)    → ai_generated_gpt_oss.jsonl
 llama_path  = PATHS["raw_dir"] / "ai_generated_llama.jsonl"
 openai_path = PATHS["raw_dir"] / "ai_generated_gpt_oss.jsonl"
 
@@ -77,26 +87,34 @@ print(f"  {OK if openai_count > 0 else WARN} ai_generated_gpt_oss.jsonl (GPT-OSS
 print(f"\n  Total AI data: {total_ai} sampel")
 
 if total_ai < 500:
-    print(f"  {WARN} AI data masih kurang — collect_gpt_oss.py / collect_openai.py masih berjalan?")
-    print(f"    Pipeline tetap dilanjutkan dengan data yang ada.")
+    print(f"  {WARN} AI data masih kurang — pipeline tetap dilanjutkan.")
 else:
     print(f"  {OK} AI data mencukupi")
 
 
-# ── [2] Cek human data (output dari notebook) ─────────────────
-print("\n[2/4] Status IndoNLI human data:")
+# ── [2] Cek human data ────────────────────────────────────────
+print("\n[2/4] Status human data:")
 
 indonli_path  = PATHS["raw_dir"] / "indonli_human.jsonl"
+scraped_path  = PATHS["raw_dir"] / "human_scraped_300.json"
+
 indonli_count = count_jsonl(indonli_path)
+scraped_count = count_json(scraped_path)
+total_human   = indonli_count + scraped_count
+
+print(f"  {OK if indonli_count > 0 else WARN} indonli_human.jsonl    : {indonli_count:>5} sampel")
+print(f"  {OK if scraped_count > 0 else WARN} human_scraped_300.json : {scraped_count:>5} sampel")
+print(f"\n  Total Human data: {total_human} sampel")
+
 notebook_path = REPO_ROOT / "notebooks" / "01_data_collection" / "indonli_data_prep.ipynb"
 
-if indonli_count >= 500:
-    print(f"  {OK} indonli_human.jsonl sudah ada: {indonli_count} sampel")
+if total_human >= 500:
+    print(f"  {OK} Human data mencukupi")
 else:
-    print(f"  {FAIL} indonli_human.jsonl belum ada atau kurang dari 500 sampel (ada: {indonli_count})")
+    print(f"  {FAIL} Human data belum ada atau kurang dari 500 sampel (ada: {total_human})")
     print(f"\n  Jalankan notebook ini terlebih dahulu:")
     print(f"  {notebook_path}")
-    print(f"\n  Atau buka di Jupyter/VS Code, run semua cell dari atas ke bawah.")
+    print(f"\n  Atau pastikan scraping berjalan dengan benar.")
     sys.exit(1)
 
 
@@ -107,19 +125,19 @@ train_exists = PATHS["train_clean"].exists()
 val_exists   = PATHS["val_clean"].exists()
 test_exists  = PATHS["test_clean"].exists()
 
-# Force re-run jika AI data bertambah
+# Force re-run jika AI data atau Human data bertambah
 if train_exists and val_exists and test_exists:
     import pandas as pd
     existing_total = len(pd.read_csv(PATHS["train_clean"])) + \
                      len(pd.read_csv(PATHS["val_clean"]))   + \
                      len(pd.read_csv(PATHS["test_clean"]))
-    expected_total = total_ai + indonli_count
+    expected_total = total_ai + total_human
     gap = abs(expected_total - existing_total)
 
     if gap < 50:
         print(f"  {OK} Processed splits sudah up-to-date ({existing_total} total) — skip")
     else:
-        print(f"  {WARN} Data bertambah ({gap} baris beda) — re-run prepare_dataset.py")
+        print(f"  {WARN} Data bertambah/berubah ({gap} baris beda) — re-run prepare_dataset.py")
         run(REPO_ROOT / "src" / "data" / "prepare_dataset.py")
 else:
     print(f"  {INFO} Processed splits belum ada — menjalankan prepare_dataset.py...")
