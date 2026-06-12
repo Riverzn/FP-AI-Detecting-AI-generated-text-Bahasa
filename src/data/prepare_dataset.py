@@ -4,7 +4,7 @@
 #
 # Komposisi dataset (kesepakatan kelompok):
 #   Human  : 700 IndoNLI + 300 scraped (Detik/Kompas/Tempo) = 1000
-#   AI     : 789 Llama + 211 GPT-OSS                        = 1000
+#   #AI    : 500 Llama + 100 GPT-OSS + 400 Qwen = 1000                      = 1000
 #   Total  : 2000 (balanced 1:1)
 #   Split  : 70% train / 15% val / 15% test (stratified)
 #
@@ -114,17 +114,9 @@ print(f"\n  Target: {CAP_INDONLI} IndoNLI + {CAP_SCRAPED} scraped"
 # ── [1/4] AI data ─────────────────────────────────────────────
 print("\n[1/4] Loading AI-generated data...")
 
-llama_raw  = load_jsonl(PATHS["raw_dir"] / "ai_generated_llama.jsonl")
-gptoss_raw = load_jsonl(PATHS["raw_dir"] / "ai_generated_gpt_oss.jsonl")
-
-# Ambil sesuai cap (random sample biar reproducible)
-llama_records  = random.sample(llama_raw,  min(CAP_LLAMA,  len(llama_raw)))
-gptoss_records = random.sample(gptoss_raw, min(CAP_GPTOSS, len(gptoss_raw)))
-ai_records     = llama_records + gptoss_records
-
-print(f"  Llama   : {len(llama_records):>4} / {CAP_LLAMA}")
-print(f"  GPT-OSS : {len(gptoss_records):>4} / {CAP_GPTOSS}")
-print(f"  Total AI: {len(ai_records)}")
+ai_raw     = load_jsonl(PATHS["raw_dir"] / "dataset_ai_baru.jsonl")
+ai_records = random.sample(ai_raw, min(1000, len(ai_raw)))
+print(f"  Total AI: {len(ai_records)} / 1000")
 
 if len(ai_records) == 0:
     print("  ✗ Tidak ada AI data. Jalankan collect_gpt_oss.py dulu.")
@@ -173,7 +165,7 @@ else:
 # ── [3/4] Human — Scraped ─────────────────────────────────────
 print("\n[3/4] Loading scraped human data...")
 
-scraped_path = PATHS["raw_dir"] / "self_human.json"
+scraped_path = PATHS["raw_dir"] / "human_scraped_300.json"
 scraped_records = load_json_scraped(scraped_path)
 
 if len(scraped_records) == 0:
@@ -198,7 +190,13 @@ df = df.dropna(subset=["text"])
 df["text"] = df["text"].str.strip()
 df = df[df["text"].str.len() > 20]
 df = df[df["word_count"] >= 5]
+
+# === MODIFIKASI DISINI (ANTI LENGTH BIAS BY CLAUDE) ===
 df = df.drop_duplicates(subset=["text"])
+df["text"] = df["text"].apply(lambda t: ' '.join(str(t).split()[:40]))  # truncate ke 40 kata
+df["word_count"] = df["text"].str.split().str.len()                 # update word_count asli
+# =======================================================
+
 df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 df["id"] = [f"SAMPLE_{i:05d}" for i in range(len(df))]
 
@@ -233,7 +231,7 @@ print(f"\n  Saving → {PATHS['processed_dir']}")
 df.to_csv(PATHS["full_dataset"], index=False)
 df_train.to_csv(PATHS["train"], index=False)
 df_val.to_csv(  PATHS["val"],   index=False)
-df_test.to_csv( PATHS["test"],  index=False)
+df_test.to_csv( PATHS["test"],   index=False)
 
 CLEAN = ["id", "text", "label", "label_int"]
 df_train[CLEAN].to_csv(PATHS["train_clean"], index=False)
@@ -254,11 +252,10 @@ stats = {
     "source_dist"    : {k: int(v) for k, v in df["source"].value_counts().items()},
     "avg_word_count" : round(float(df["word_count"].mean()), 1),
     "class_ratio"    : round(float(ratio), 2),
-    "composition"    : {
-        "indonli_human" : len(indonli_records),
-        "scraped_human" : len(scraped_records),
-        "llama_ai"      : len(llama_records),
-        "gptoss_ai"     : len(gptoss_records),
+    "composition": {
+    "indonli_human" : len(indonli_records),
+    "scraped_human" : len(scraped_records),
+    "ai_combined"   : len(ai_records),
     }
 }
 with open(PATHS["dataset_stats"], "w", encoding="utf-8") as f:
