@@ -1,4 +1,5 @@
 {
+<<<<<<< Updated upstream
   "total": 1657,
   "train": 1159,
   "val": 249,
@@ -19,5 +20,30 @@
     "scraped_human": 0,
     "llama_ai": 789,
     "gptoss_ai": 208
+=======
+  "total": 1963,
+  "train": 1374,
+  "val": 294,
+  "test": 295,
+  "label_dist": {
+    "AI": 1000,
+    "human": 963
+  },
+  "source_dist": {
+    "IndoNLI": 663,
+    "Llama-3.1-8B": 500,
+    "Qwen3-32b": 400,
+    "scraped_antara": 100,
+    "scraped_detik": 100,
+    "scraped_cnn_indonesia": 100,
+    "GPT-OSS-20b": 100
+  },
+  "avg_word_count": 32.0,
+  "class_ratio": 1.04,
+  "composition": {
+    "indonli_human": 700,
+    "scraped_human": 300,
+    "ai_combined": 1000
+>>>>>>> Stashed changes
   }
 }
